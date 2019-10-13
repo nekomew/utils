@@ -1,0 +1,64 @@
+package com.zq.utils;
+
+import java.io.UnsupportedEncodingException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
+/**
+ * 描述：MD5加密
+ * @author : zhangqian
+ * @date : 2019-10-14 00:30
+ */
+public class Md5Utils {
+
+    /**
+     * 密钥
+     */
+    private static final char[] MD5_CHAR = "0123456789ABCDEF".toCharArray();
+
+    /**
+     * 描述: 转换md5
+     * @param source : 源字符串
+     * @date : 2019-10-13 19:18
+     * @author : zhangqian
+     * @return : java.lang.String
+     */
+    public static String toMd5(String source) {
+        return toMd5(source, "UTF-8");
+    }
+
+    /**
+     * 描述 :  转换md5
+     * @param source :源字符串
+     * @param charset :字符编码
+     * @date : 2019-10-14 0:37
+     * @author : zhangqian
+     * @return : java.lang.String
+     */
+    public static String toMd5(String source, String charset) {
+        StringBuilder sb = new StringBuilder();
+
+        MessageDigest md5Digest;
+        try {
+            md5Digest = MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("获取MD5MessageDigest实例失败", e);
+        }
+
+        byte[] bytes;
+        try {
+            bytes = md5Digest.digest(source.getBytes(charset));
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException("字符编码类型<" + charset + ">错误", e);
+        }
+
+        for (int i = 0, len = bytes.length, b; i < len; i++) {
+            b = bytes[i];
+            sb.append(MD5_CHAR[b >> 4 & 0xF]);
+            sb.append(MD5_CHAR[b & 0xF]);
+        }
+
+        return sb.toString();
+    }
+
+}
