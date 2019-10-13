@@ -1,0 +1,146 @@
+package com.zq.utils;
+
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Optional;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+
+/**
+ * 描述 :
+ * @date : 2019-10-13 19:25
+ * @author : zhangqian
+ */
+public class WxSignUtils {
+
+    /**
+     * 描述 :
+     * @param args :
+     * @date : 2019-10-13 19:28
+     * @author : zhangqian
+     */
+    public static void main(String[] args) {
+        XmlParam xmlParam = new XmlParam();
+        xmlParam.setAppid("wxd930ea5d5a258f4f");
+        xmlParam.setMch_id("wxd930ea5d5a258f4f");
+        xmlParam.setDevice_info("10000100");
+        xmlParam.setBody("1000");
+        xmlParam.setNonce_str("ibuaiVcKdpRxkhJA");
+        xmlParam.setSign(sign(xmlParam, "123456"));
+
+
+        System.out.println(XmlUtils.toXml(xmlParam));
+
+    }
+    /**
+     * 描述: 加密
+     * @param data : 数据
+     * @param key : 密钥
+     * @date : 2019-10-13 19:18
+     * @author : zhangqian
+     * @return : java.lang.String
+     */
+    public static String sign(Map<Object, Object> data, String key) {
+        data = new TreeMap<>(data);
+
+        String collect = data.entrySet().stream()
+                .map(en -> en.getKey() + "=" + en.getValue())
+                .collect(Collectors.joining("&"));
+
+        collect = collect + "&key=" + key;
+
+        System.out.println("collect = " + collect);
+        return Md5Utils.toMd5(collect);
+    }
+    /**
+     * 描述 : 加密
+     * @param data : 数据
+     * @param key : 密钥
+     * @date : 2019-10-13 19:26
+     * @author : zhangqian
+     * @return : java.lang.String
+     */
+    public static String sign(Object data, String key) {
+        Class<?> cls = data.getClass();
+
+        Field[] fields = cls.getDeclaredFields();
+
+        String collect = Arrays.stream(fields)
+                .map(Field::getName)
+                .sorted()
+                .map(fieldName -> {
+                    Object val = XmlUtils.getFieldValue(data, cls, fieldName);
+                    return  val != null && !"".equals(val) ? fieldName + "=" + val : null;
+                })
+                .filter(kv -> Optional.ofNullable(kv).isPresent())
+                .collect(Collectors.joining("&"));
+
+        collect = collect + "&key=" + key;
+
+        System.out.println("collect = " + collect);
+        return Md5Utils.toMd5(collect);
+    }
+
+    /**
+     * 描述: 参数配置
+     * @date : 2019-10-13 19:19
+     * @author : zhangqian
+     */
+    static class XmlParam {
+        private String appid;
+        private String mch_id;
+        private String device_info;
+        private String body;
+        private String nonce_str;
+        private String sign;
+
+        public String getAppid() {
+            return appid;
+        }
+
+        public void setAppid(String appid) {
+            this.appid = appid;
+        }
+
+        public String getMch_id() {
+            return mch_id;
+        }
+
+        public void setMch_id(String mch_id) {
+            this.mch_id = mch_id;
+        }
+
+        public String getDevice_info() {
+            return device_info;
+        }
+
+        public void setDevice_info(String device_info) {
+            this.device_info = device_info;
+        }
+
+        public String getBody() {
+            return body;
+        }
+
+        public void setBody(String body) {
+            this.body = body;
+        }
+
+        public String getNonce_str() {
+            return nonce_str;
+        }
+
+        public void setNonce_str(String nonce_str) {
+            this.nonce_str = nonce_str;
+        }
+
+        public String getSign() {
+            return sign;
+        }
+
+        public void setSign(String sign) {
+            this.sign = sign;
+        }
+    }
+}
