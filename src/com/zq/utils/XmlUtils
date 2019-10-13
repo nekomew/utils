@@ -1,0 +1,141 @@
+package com.zq.utils;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Map;
+import java.util.function.Supplier;
+
+/**
+ * 描述：
+ * @date : 2019-10-12 22:11
+ * @author : zhangqian
+ */
+public class XmlUtils {
+
+    public static void main(String[] args) {
+
+    }
+
+    private static final String METHOD_PRE = "get";
+
+    /**
+     * 描述: 对象转行成xml
+     * @param obj : 对象
+     * @date : 2019-10-13 19:11
+     * @author : zhangqian
+     * @return : java.lang.String
+     */
+    public static String toXml(Object obj) {
+        return toXml(obj,"xml");
+    }
+    /**
+     * 描述:  对象转行xml
+     * @param obj : 对象
+     * @param lab : 标签名
+     * @date : 2019-10-13 19:11
+     * @author : zhangqian
+     * @return : java.lang.String
+     */
+    @SuppressWarnings({"unchecked"})
+    public static String toXml(Object obj, String lab) {
+
+        if (obj instanceof Map) {
+            return lab(lab, () -> mapToXml((Map<Object, Object>) obj));
+        }
+        else if (obj instanceof String || obj instanceof Number || obj instanceof Boolean) {
+            return lab(lab, obj::toString);
+        }
+        else if (obj instanceof Date) {
+            return lab(lab, () ->
+                    new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format((Date)obj));
+        }
+        else {
+            return lab(lab, () -> objToXml(obj));
+        }
+    }
+
+    /**
+     * 描述:  对象转行xml
+     * @param obj : 对象
+     * @date : 2019-10-13 19:12
+     * @author : zhangqian
+     * @return : java.lang.String
+     */
+    private static String objToXml(Object obj) {
+        StringBuilder sb = new StringBuilder();
+
+        Class<?> cls = obj.getClass();
+
+        Field[] fields = cls.getDeclaredFields();
+
+        for (Field field : fields) {
+            String fieldName = field.getName();
+            Object val = getFieldValue(obj, cls, fieldName);
+            sb.append(toXml(val, fieldName));
+        }
+
+        return sb.toString();
+    }
+    /**
+     * 描述: 获取属性值
+     * @param obj : 对象
+     * @param cls : 类对象
+     * @param name : 属性名称
+     * @date : 2019-10-13 19:12
+     * @author : zhangqian
+     * @return : java.lang.Object
+     */
+    public static Object getFieldValue(Object obj, Class<?> cls, String name) {
+        try {
+            Method method = cls.getDeclaredMethod(METHOD_PRE + upInitials(name));
+            return method.invoke(obj);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    /**
+     * 描述: 首字母大写
+     * @param name : 属性名
+     * @date : 2019-10-13 19:13
+     * @author : zhangqian
+     * @return : java.lang.String
+     */
+    private static String upInitials(String name) {
+        String s = Character.toUpperCase(name.charAt(0)) + "";
+
+        return name.replaceFirst("^\\w", s);
+    }
+    /**
+     * 描述: map转xml
+     * @param map : map对象
+     * @date : 2019-10-13 19:17
+     * @author : zhangqian
+     * @return : java.lang.String
+     */
+    private static String mapToXml(Map<Object, Object> map) {
+        StringBuilder sb = new StringBuilder();
+
+        for (Map.Entry<Object, Object> en : map.entrySet()) {
+            String key = en.getKey().toString();
+            Object val = en.getValue();
+
+            sb.append(toXml(val, key));
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * 描述: 标签包裹回调函数返回的字符串
+     * @param lab : 标签名
+     * @param callback : 回调接口
+     * @date : 2019-10-13 19:13
+     * @author : zhangqian
+     * @return : java.lang.String
+     */
+    private static String lab(String lab, Supplier<String> callback) {
+        return "<" + lab + ">" + callback.get() + "</" + lab + ">";
+    }
+}
