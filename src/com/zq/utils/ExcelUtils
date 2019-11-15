@@ -1,0 +1,293 @@
+package com.zq.utils;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import java.io.InputStream;
+import java.lang.annotation.*;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * 描述 ：
+ *
+ * @author : zhangqian
+ * @date : 2019-11-15 08:59
+ */
+public class ExcelUtils {
+
+    /**
+     * 描述 : 解析excel 为实体类
+     * @param in :
+     * @param cls :
+     * @date : 2019-11-15 12:49
+     * @author : zhangqian
+     * @return : java.util.List<T>
+     */
+    public static <T> List<T> parseExcel(InputStream in, Class<T> cls) {
+        List<T> list = new ArrayList<>();
+        try (Workbook workbook = WorkbookFactory.create(in)){
+            ExcelEntityPropertis propertis = parseExcelField(cls);
+            Sheet sheet = workbook.getSheetAt(0);
+
+            Iterator<Row> rowIterator = sheet.rowIterator();
+            rowIterator.next();//跳过标题
+
+            while (rowIterator.hasNext()) {
+                Row row = rowIterator.next();
+                T entity = cls.newInstance();
+                for (int i = 0; i < propertis.excelFields.size(); i++) {
+                    Cell cell = row.getCell(i);
+                    propertis.excelFields.get(i).set(entity, cell.getStringCellValue());
+                }
+                list.add(entity);
+            }
+
+            return list;
+        } catch (Exception e) {
+            throw new RuntimeException("excel解析失败", e);
+        }
+    }
+
+    /**
+     * 描述 :  创建一个workbook
+     * @param sheetName :
+     * @param titles :
+     * @date : 2019-11-15 10:39
+     * @author : zhangqian
+     * @return : org.apache.poi.ss.usermodel.Workbook
+     */
+    public static Workbook createWorkbook4Obj(String sheetName, List<String> titles) {
+        XSSFWorkbook workbook = new XSSFWorkbook();
+
+        XSSFSheet sheet = workbook.createSheet(sheetName == null ? "sheet1" : sheetName);
+        XSSFRow titleRow = sheet.createRow(0);
+
+        for (int i = 0, len = titles.size(); i < len; i++) {
+            XSSFCell cell = titleRow.createCell(i);
+            cell.setCellValue(titles.get(i));
+        }
+
+        return workbook;
+    }
+
+    /**
+     * 描述 : 解析实体类的 ExcelField 注解
+     * @param obj :
+     * @date : 2019-11-15 11:32
+     * @author : zhangqian
+     * @return : org.apache.poi.ss.usermodel.Workbook
+     */
+    public static Workbook createWorkbookWithTitle(Object obj) {
+        ExcelEntityPropertis p = parseExcelField(obj.getClass());
+        return createWorkbook4Obj(p.sheetName, p.titles());
+    }
+
+    /**
+     * 描述 : 解析实体类的 ExcelField 注解
+     * @param list :
+     * @date : 2019-11-15 11:32
+     * @author : zhangqian
+     * @return : org.apache.poi.ss.usermodel.Workbook
+     */
+    public static Workbook createWorkbookWithData(List<?> list) {
+        ExcelEntityPropertis p = parseExcelField(list.get(0).getClass());
+        Workbook workbook = createWorkbook4Obj(p.sheetName, p.titles());
+
+        Sheet sheet = workbook.getSheetAt(0);
+        List<ExcelFieldProperties> excelFields = p.excelFields;
+        int cellSize = p.excelFields.size();
+        int rowSize = list.size();
+
+        for (int i = 0; i < rowSize; i++) {
+            Row row = sheet.createRow(i + 1);
+            Object data = list.get(i);
+
+            for (int j = 0; j < cellSize; j++) {
+                Cell cell = row.createCell(j);
+                cell.setCellValue(Objects.toString(excelFields.get(j).get(data), ""));
+            }
+
+        }
+
+        return workbook;
+    }
+
+    /**
+     * 描述 : 解析实体类
+     * @param cls :
+     * @date : 2019-11-15 11:23
+     * @author : zhangqian
+     * @return : com.nfha.web.screen.util.ExcelUtils.ExcelEntityPropertis
+     */
+    private static ExcelEntityPropertis parseExcelField (Class<?> cls) {
+        ExcelEntityPropertis propertis = new ExcelEntityPropertis();
+
+        ExcelField excelField = cls.getAnnotation(ExcelField.class);
+        if (excelField != null) {
+            propertis.sheetName = excelField.value();
+        }
+
+        Field[] fields = cls.getDeclaredFields();
+
+        for (int i = 0, len = fields.length; i < len; i++) {
+            Field field = fields[i];
+            excelField = field.getAnnotation(ExcelField.class);
+
+            if (excelField != null) {
+                propertis.add(excelField.value(), field, excelField.order());
+            }
+        }
+        return propertis.sort();
+    }
+
+    /**
+     * 描述 :  实体的映射
+     * @date : 2019-11-15 11:03
+     * @author : zhangqian
+     */
+    private static class ExcelEntityPropertis {
+        String sheetName;
+
+        List<ExcelFieldProperties> excelFields = new ArrayList<>();
+
+        ExcelEntityPropertis add(String title, Field field, int order) {
+            excelFields.add(new ExcelFieldProperties(title, field, order));
+            return this;
+        }
+
+        ExcelEntityPropertis sort() {
+            Collections.sort(this.excelFields);
+            return this;
+        }
+
+        List<String> titles() {
+            return this.excelFields.stream()
+                    .map(ExcelFieldProperties::getTitle)
+                    .collect(Collectors.toList());
+        }
+
+        List<Field> fields() {
+            return this.excelFields.stream()
+                    .map(ExcelFieldProperties::getField)
+                    .collect(Collectors.toList());
+        }
+    }
+
+    /**
+     * 描述 :  注解中解析出的属性
+     * @date : 2019-11-15 11:16
+     * @author : zhangqian
+     */
+    private static class ExcelFieldProperties implements Comparable<ExcelFieldProperties>{
+        String title;
+        Field field;
+        int order;
+
+        ExcelFieldProperties(String title, Field field, int order) {
+            this.title = title;
+            this.field = field;
+            this.order = order;
+        }
+
+        @Override
+        public int compareTo(ExcelFieldProperties o) {
+            return this.order - o.order;
+        }
+        public String getTitle() {
+            return title;
+        }
+        public Field getField() {
+            return field;
+        }
+        //获取值
+        Object get(Object obj) {
+            //field.setAccessible(true);
+            ExcelField excelField = field.getAnnotation(ExcelField.class);
+            String format = excelField.dateFormat();
+            try {
+                String fieldName = field.getName();
+                Method getMethod = obj.getClass().getMethod("get" + (fieldName.charAt(0) + "").toUpperCase() + fieldName.substring(1));
+                Object o = getMethod.invoke(obj);
+                if (o != null && StringUtils.isNotBlank(format) && Date.class.isAssignableFrom(field.getType())) {
+                    return new SimpleDateFormat(format).format(o);
+                }
+                return o;
+            } catch (Exception e) {
+                throw new RuntimeException("字段设值异常", e);
+            }
+        }
+        //设值
+        void set(Object obj, Object val) {
+            if (val == null || "".equals(val)) {
+                return;
+            }
+            field.setAccessible(true);
+            ExcelField excelField = field.getAnnotation(ExcelField.class);
+            String format = excelField.dateFormat();
+            Class<?> type = field.getType();
+
+            try {
+                if (StringUtils.isNotBlank(format) && Date.class.isAssignableFrom(type)) {
+                    val = new SimpleDateFormat(format).parse(val.toString());
+                }
+                if (Number.class.isAssignableFrom(type)) {
+                    val = type.getMethod("valueOf", String.class).invoke(type, val);
+                }
+                if (MAP.get(type) != null) {
+                    val = MAP.get(type).getMethod("valueOf", String.class).invoke(type, val);
+                }
+                String fieldName = field.getName();
+                Method getMethod = obj.getClass().getMethod("set" + (fieldName.charAt(0) + "").toUpperCase() + fieldName.substring(1), field.getType());
+                getMethod.invoke(obj, val);
+            } catch (Exception e) {
+                throw new RuntimeException("字段设值异常", e);
+            }
+        }
+    }
+
+    private static final Map<Class<?>, Class<?>> MAP = new HashMap<>();
+    static {
+        MAP.put(int.class, Integer.class);
+        MAP.put(double.class, Double.class);
+    }
+
+    /**
+     * 描述 : 实体类映射
+     * @date : 2019-11-15 10:51
+     * @author : zhangqian
+     */
+    @Target({ElementType.TYPE, ElementType.FIELD})
+    @Retention(RetentionPolicy.RUNTIME)
+    @Documented
+    public static @interface ExcelField{
+        /**
+         * 描述 : 对应的标题 或者 文件名
+         * @date : 2019-11-15 10:44
+         * @author : zhangqian
+         * @return : java.lang.String
+         */
+        String value() default "";
+        /**
+         * 描述 : 排序
+         * @date : 2019-11-15 10:49
+         * @author : zhangqian
+         * @return : int
+         */
+        int order() default 0;
+        /**
+         * 描述 : 日期格式
+         * @date : 2019-11-15 12:53
+         * @author : zhangqian
+         * @return : java.lang.String
+         */
+        String dateFormat() default "yyyy-MM-dd HH:mm:ss";
+    }
+}
