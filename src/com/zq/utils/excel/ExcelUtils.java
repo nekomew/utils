@@ -1,13 +1,8 @@
 package com.nfha.frame.util.excel;
 
-import com.nfha.frame.util.excel.format.ExcelFieldEntity;
 import com.nfha.frame.util.excel.format.Formater;
-import org.apache.poi.ss.formula.functions.T;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFCell;
-import org.apache.poi.xssf.usermodel.XSSFRow;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.usermodel.*;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -64,7 +59,7 @@ public class ExcelUtils {
                     
                     //设值
                     field.setAccessible(true);
-                    field.set(entity, formater.format(value));
+                    field.set(entity, formater.parse(value));
                 }
 
                 list.add(entity);
@@ -89,6 +84,8 @@ public class ExcelUtils {
         XSSFSheet sheet = sheetField == null ? workbook.createSheet() : workbook.createSheet(sheetField.value());
         //获取属性
         List<ExcelFieldEntity> entities = parseExcelField(cls);
+        //设置宽度
+        setColumnWidth(sheet, entities);
 
         //标题
         XSSFRow titleRow = sheet.createRow(0);
@@ -109,6 +106,18 @@ public class ExcelUtils {
         }
 
         write(workbook, out);
+    }
+
+    /**
+     * 设置 宽度
+     * @param sheet
+     * @param entities
+     */
+    private static void setColumnWidth(XSSFSheet sheet, List<ExcelFieldEntity> entities) {
+        for (int i = 0; i < entities.size(); i++) {
+            ExcelFieldEntity excelFieldEntity = entities.get(i);
+            sheet.setColumnWidth(i, excelFieldEntity.getExcelField().width() * 256);
+        }
     }
 
     /**
@@ -149,7 +158,7 @@ public class ExcelUtils {
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
-                o = formater.reformat(o);
+                o = formater.format(o);
                 value = o == null ? "" : o.toString();
             }
 

@@ -35,8 +35,18 @@ public @interface ExcelField{
     int order() default 0;
 
     /**
-     * 格式化
+     * <li>格式化 方式
+     * <li>如果没有实现类  请继承com.nfha.frame.util.excel.format.Formater 自行实现
+     * <li>参考
+     * <li>- com.nfha.frame.util.excel.format.IntFormater
+     * <li>- com.nfha.frame.util.excel.format.ObjectFormater
      * @return
      */
     Class<? extends Formater> format() default ObjectFormater.class;
+
+    /**
+     * 单元格宽度
+     * @return
+     */
+    int width() default 20;
 }

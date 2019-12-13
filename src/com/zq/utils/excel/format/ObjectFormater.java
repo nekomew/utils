@@ -1,19 +1,20 @@
 package com.nfha.frame.util.excel.format;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.formula.functions.T;
 
 /**
  * @author : zhangqian
  * @date : 2019-12-12 12:07
  */
-public class ObjectFormater<T> implements Formater<T, T>{
+public class ObjectFormater implements Formater<Object>{
     @Override
-    public T format(T t) {
+    public Object parse(String t) {
         return t;
     }
 
     @Override
-    public T reformat(T t) {
-        return t;
+    public String format(Object t) {
+        return t != null ? t.toString() : "";
     }
 }
