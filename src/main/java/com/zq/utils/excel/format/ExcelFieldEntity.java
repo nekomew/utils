@@ -1,6 +1,6 @@
-package com.nfha.frame.util.excel.format;
+package com.zq.utils.excel.format;
 
-import com.nfha.frame.util.excel.ExcelField;
+import com.zq.utils.excel.ExcelField;
 
 import java.lang.reflect.Field;
 
