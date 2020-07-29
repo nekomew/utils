@@ -117,8 +117,11 @@
 
     //在注册插件
     $.fn.timepicker = function(options) {
-        var timepickerVo = new TimepickerVo(this, options);
-        return timepickerVo._init();
+        this.each(function () {
+            var timepickerVo = new TimepickerVo($(this), options);
+            return timepickerVo._init();
+        })
+        return this;
     }
 
     $(document).on("click focus", "." + triggerClass, function () {
